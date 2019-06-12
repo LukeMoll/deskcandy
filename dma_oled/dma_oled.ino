@@ -6,11 +6,11 @@ NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(NUM_LEDS, D9); // D9 ignored f
 #include <U8x8lib.h>
 
 // if ESP8266 can do HW SPI, that's dope but can't figure it out now. 
-#define _SCK D0
-#define _MOSI D1
-#define _CS D7
-#define _RST D5
-#define _DC D6
+#define _SCK D5
+#define _MOSI D7
+#define _CS D8
+#define _RST D6
+#define _DC D1
 
 // for the older looking one
 U8X8_SSD1305_128X64_ADAFRUIT_4W_SW_SPI u8x8(_SCK, _MOSI, _CS, _DC, _RST);
