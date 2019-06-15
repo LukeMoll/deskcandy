@@ -23,6 +23,7 @@ U8X8_SSD1305_128X64_ADAFRUIT_4W_SW_SPI u8x8(_SCK, _MOSI, _CS, _DC, _RST);
 #define HUE_WIDTH 0.4f
 #define TICKLEN_MS 25
 #define SEQLEN_MS 10000 
+#define OLED_TIMEOUT_MS 30000
 
 void setup() {
   Serial.begin(9600);
@@ -85,8 +86,10 @@ void loop() {
   if(digitalRead(_BUTTON) == LOW && !buttonPressed) {
     u8x8.setPowerSave(0);
     screen_millis = millis();
+    buttonPressed = true;
   }
-  if(millis() - screen_millis > 60000) { // screen has been on for a minute
+  else {buttonPressed = false;}
+  if(millis() - screen_millis > OLED_TIMEOUT_MS) { // screen has been on for a minute
     u8x8.setPowerSave(1);
   }
 }
