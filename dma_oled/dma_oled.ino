@@ -36,9 +36,12 @@ void setup() {
   pinMode(_BUTTON, INPUT);
 
   u8x8.begin();
+  oled_print();
+}
 
-  // all of this should probably go in a fn
+void oled_print() {
   u8x8.setPowerSave(0);
+  u8x8.clearDisplay();
   u8x8.setFont(u8x8_font_chroma48medium8_r); // works? needs latest u8g2
   char buf[16];
   snprintf(buf,16,"%3d LEDs", NUM_LEDS);
@@ -51,7 +54,6 @@ void setup() {
   u8x8.drawString(0,3,buf);
   snprintf(buf,16,"= %d ticks", SEQLEN_MS / TICKLEN_MS);
   u8x8.drawString(0,4,buf);
-  
 }
 
 void base_hues(const uint8_t L, float W) {
@@ -78,10 +80,10 @@ void progress(int16_t num_ticks) {
 bool buttonPressed = false;
 unsigned long screen_millis = millis();
 
+unsigned long tick_millis = millis() + TICKLEN_MS;
 void loop() {
   progress(SEQLEN_MS / TICKLEN_MS);
   leds.Show();
-  delay(TICKLEN_MS);
   
   if(digitalRead(_BUTTON) == LOW && !buttonPressed) {
     u8x8.setPowerSave(0);
@@ -92,4 +94,25 @@ void loop() {
   if(millis() - screen_millis > OLED_TIMEOUT_MS) { // screen has been on for a minute
     u8x8.setPowerSave(1);
   }
+
+  while (millis() < tick_millis && Serial.available() > 0) {
+      String input = Serial.readString();
+      if(input.startsWith("width")) {
+        float new_width = input.substring(6).toFloat();
+        if(new_width > 0) {
+          base_hues(NUM_LEDS, new_width);
+          Serial.print("width ");
+          Serial.println(new_width);
+        }
+        else {
+          Serial.print("E could not parse");
+          Serial.println(new_width);
+        }
+      }
+      else {
+        Serial.println("E command did not match");
+      }
+  }
+
+  delay(max(0LU, tick_millis - millis()));
 }
