@@ -1,12 +1,9 @@
-#include <Arduino.h>
-#include <NeoPixelBus.h>
+#include "main.h"
 
 #define _LED D9 // D9 ignored for ESP8266 - connect to "RX"
 
-#define NUM_LEDS 35
+#define NUM_LEDS 100
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(NUM_LEDS, _LED); 
-
-#include <U8x8lib.h>
 
 // if ESP8266 can do HW SPI, that's dope but can't figure it out now. 
 #define _SCK D5
@@ -20,13 +17,14 @@ U8X8_SSD1305_128X64_ADAFRUIT_4W_SW_SPI u8x8(_SCK, _MOSI, _CS, _DC, _RST);
 
 #define _BUTTON D2
 
+#define BRIGHTNESS 0.5f
 #define HUE_WIDTH 0.4f
 #define TICKLEN_MS 25
-#define SEQLEN_MS 10000 
-#define OLED_TIMEOUT_MS 30000
+#define SEQLEN_MS 20000 
+#define OLED_TIMEOUT_MS 10000
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   leds.Begin();
   leds.Show();
 
@@ -46,20 +44,28 @@ void oled_print() {
   char buf[16];
   snprintf(buf,16,"%3d LEDs", NUM_LEDS);
   u8x8.drawString(0,0,buf);
+  Serial.println(buf);
   snprintf(buf,16,"%.0f%% Hue", HUE_WIDTH*100);
   u8x8.drawString(0,1,buf);
+  Serial.println(buf);
   snprintf(buf,16,"Tseq: %dms", SEQLEN_MS);
   u8x8.drawString(0,2,buf);
+  Serial.println(buf);
   snprintf(buf,16,"Ttick: %dms", TICKLEN_MS);
   u8x8.drawString(0,3,buf);
+  Serial.println(buf);
   snprintf(buf,16,"= %d ticks", SEQLEN_MS / TICKLEN_MS);
   u8x8.drawString(0,4,buf);
+  Serial.println(buf);
+  snprintf(buf,16,"h+= %f", (float) TICKLEN_MS / (float) SEQLEN_MS);
+  u8x8.drawString(0,5,buf);
+  Serial.println(buf);
 }
 
 void base_hues(const uint8_t L, float W) {
   for(uint8_t i=0; i < L; i++) {
     float hue = ((float) i * W) / (float) L;
-    leds.SetPixelColor(i, HsbColor(hue - (int) hue, 1.0f, 0.8f));
+    leds.SetPixelColor(i, HsbColor(hue - (int) hue, 1.0f, BRIGHTNESS));
   }
 }
 
@@ -73,6 +79,7 @@ void progress(int16_t num_ticks) {
     if(current.H > 1) {
       current.H -= (int) current.H;
     }
+    
     leds.SetPixelColor(i, current);
   }
 }
@@ -80,11 +87,12 @@ void progress(int16_t num_ticks) {
 bool buttonPressed = false;
 unsigned long screen_millis = millis();
 
-unsigned long tick_millis = millis() + TICKLEN_MS;
+unsigned long tick_millis;
 void loop() {
+  tick_millis = millis() + TICKLEN_MS;
   progress(SEQLEN_MS / TICKLEN_MS);
   leds.Show();
-  
+
   if(digitalRead(_BUTTON) == LOW && !buttonPressed) {
     u8x8.setPowerSave(0);
     screen_millis = millis();
@@ -95,24 +103,7 @@ void loop() {
     u8x8.setPowerSave(1);
   }
 
-  while (millis() < tick_millis && Serial.available() > 0) {
-      String input = Serial.readString();
-      if(input.startsWith("width")) {
-        float new_width = input.substring(6).toFloat();
-        if(new_width > 0) {
-          base_hues(NUM_LEDS, new_width);
-          Serial.print("width ");
-          Serial.println(new_width);
-        }
-        else {
-          Serial.print("E could not parse");
-          Serial.println(new_width);
-        }
-      }
-      else {
-        Serial.println("E command did not match");
-      }
+  if(tick_millis > millis()) {
+    delay(tick_millis - millis());
   }
-
-  delay(max(0LU, tick_millis - millis()));
 }
