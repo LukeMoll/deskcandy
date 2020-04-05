@@ -20,14 +20,12 @@ U8X8_SSD1305_128X64_ADAFRUIT_4W_SW_SPI u8x8(_SCK, _MOSI, _CS, _DC, _RST);
 #define BRIGHTNESS 0.5f
 #define HUE_WIDTH 0.4f
 #define TICKLEN_MS 25
-#define SEQLEN_MS 20000 
+#define SEQLEN_MS 18900 
 #define OLED_TIMEOUT_MS 10000
 
 void setup() {
   Serial.begin(115200);
   leds.Begin();
-  leds.Show();
-
   base_hues(NUM_LEDS, HUE_WIDTH);
   leds.Show();
 
@@ -57,9 +55,14 @@ void oled_print() {
   snprintf(buf,16,"= %d ticks", SEQLEN_MS / TICKLEN_MS);
   u8x8.drawString(0,4,buf);
   Serial.println(buf);
-  snprintf(buf,16,"h+= %f", (float) TICKLEN_MS / (float) SEQLEN_MS);
-  u8x8.drawString(0,5,buf);
-  Serial.println(buf);
+  if(check_hue_advance()) {
+    snprintf(buf,16,"Ttick/Tseq low!");
+    u8x8.drawString(0,5,buf);
+    Serial.println("[warn] TICKLEN_MS / SEQLEN_MS may be too low");
+    snprintf(buf,16,"h+= %f", (float) TICKLEN_MS / (float) SEQLEN_MS);
+    u8x8.drawString(0,6,buf);
+    Serial.println(buf);
+  }
 }
 
 void base_hues(const uint8_t L, float W) {
@@ -82,6 +85,16 @@ void progress(int16_t num_ticks) {
     
     leds.SetPixelColor(i, current);
   }
+}
+
+// We will avoid this problem altogether by moving to a progress() function based on the current amount through the sequence
+int check_hue_advance() {
+  RgbColor a = RgbColor(HsbColor(0.0f, 1.0f, BRIGHTNESS));
+  RgbColor b = RgbColor(HsbColor((float) TICKLEN_MS / (float) SEQLEN_MS, 1.0f, BRIGHTNESS));
+  if(a.R != b.R || a.G != b.G || a.B != b.B) {
+    return 0;
+  }
+  else return 1;
 }
 
 bool buttonPressed = false;
